@@ -49,10 +49,10 @@ class NeuralNetMLP(object):
         -----------
         onehot : array, shape = (n_samples, n_labels)
         """
-        onehot = np.zeros((n_classes, y.shape[0]))
+        self.onehot = np.zeros((n_classes, y.shape[0]))
         for idx, val in enumerate(y.astype(int)):
-            onehot[val, idx] = 1.
-        return onehot.T
+            self.onehot[val, idx] = 1.
+        return self.onehot.T
 
     def _sigmoid(self, z):
         """Compute logistic function (sigmoid)"""
