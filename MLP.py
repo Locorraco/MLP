@@ -1,43 +1,13 @@
+import pandas as pd
+from sklearn.utils import shuffle
 import numpy as np
 import sys
 
 class NeuralNetMLP(object):
-    """ Feedforward neural network / Multi-layer perceptron classifier.
-    Parameters
-    ------------
-    n_hidden : int (default: 30)
-        Number of hidden units.
-    l2 : float (default: 0.)
-        Lambda value for L2-regularization.
-        No regularization if l2=0. (default)
-    epochs : int (default: 100)
-        Number of passes over the training set.
-    eta : float (default: 0.001)
-        Learning rate.
-    shuffle : bool (default: True)
-        Shuffles training data every epoch if True to prevent circles.
-    minibatch_size : int (default: 1)
-        Number of training samples per minibatch.
-    seed : int (default: None)
-        Random seed for initalizing weights and shuffling.
-    Attributes
-    -----------
-    eval_ : dict
-      Dictionary collecting the cost, training accuracy,
-      and validation accuracy for each epoch during training.
-    """
-
-    def __init__(self, n_hidden=30,
-                 l2=0., epochs=100, eta=0.001,
-                 shuffle=True, minibatch_size=1, seed=None):
-
-        self.random = np.random.RandomState(seed)
-        self.n_hidden = n_hidden
-        self.l2 = l2
-        self.epochs = epochs
-        self.eta = eta
-        self.shuffle = shuffle
-        self.minibatch_size = minibatch_size
+    #TODO add all parameters
+    def __init__(self, LAYERS=10):
+        self.layers = LAYERS
+        
 
     def _onehot(self, y, n_classes):
         """Encode labels into one-hot representation
@@ -251,3 +221,19 @@ class NeuralNetMLP(object):
             self.eval_['valid_acc'].append(valid_acc)
 
         return self 
+    
+def Preprocess(data):
+    d = {"Iris-setosa" : 0, "Iris-versicolor" : 1, "Iris-virginica" : 2}
+    for i in range(len(data)):
+        data.iat[i,4] = d[data.iat[i,4]]
+
+if __name__ == "__main__":
+    iris = shuffle(pd.read_csv("Proyectos/MLP/iris.data.txt", header=None))
+    Preprocess(iris)
+    X_train = iris.iloc[:100,:4]
+    X_test  = iris.iloc[100:,:4]
+    Y_train = iris.iloc[:100,4]
+    Y_test  = iris.iloc[100:,4]
+    
+    net = NeuralNetMLP()
+    net.fit(X_train,X_test,Y_train,Y_test)
