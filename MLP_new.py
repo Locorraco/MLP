@@ -152,8 +152,18 @@ import numpy as np
 import sys
 from sklearn.utils import shuffle
 
+class Graph:
+    def __init__(self):
+        self.A = np.matrix([])
+        self.Z = np.matrix([])
+        
+class Minibatch:
+    def __init__(self):
+        self.parameters = np.matrix([])
+        self.labels = np.matrix([])
+
 class NeuralNetMLP:
-    r"""Creates a Multi-Layered Perceptron
+    """Creates a Multi-Layered Perceptron
 
     Structure of Neural Network is declared upon initialization, default parameters can (and should) be changed.
     Parameters can be fitted with fit() and seperated X_train and Y_train test variables
@@ -168,14 +178,14 @@ class NeuralNetMLP:
     Example::
 
         net = NeuralNetMLP(INPUT_SIZE=10, LAYER_SIZES=[10,5,10]):
-        net.fit(X_train, Y_train)
+        net.fit(X_train, Y_train, X_validation, Y_validation)
         net.predict(X_test, Y_test)
             
     """
-    def __init__(self, INPUT_SIZE=5, OUTPUT_SIZE=5, LAYER_SIZES=[2, 3, 4], SEED=42):
-        
+    def __init__(self, INPUT_SIZE=5, OUTPUT_SIZE=5, LAYER_SIZES=[2, 3, 4], SEED=42, LEARNING_RATE=0.001):
+        self.learning_rate = LEARNING_RATE
         self.seed = SEED
-        self.num_hlayers = len(LAYER_SIZES)
+        self.n = len(LAYER_SIZES)
         self.input_size = INPUT_SIZE
         self.output_size = OUTPUT_SIZE
         self.layer_sizes = LAYER_SIZES
@@ -187,11 +197,11 @@ class NeuralNetMLP:
         """
         weights = []
         old = self.input_size
-        for x in range(self.num_hlayers):
+        for x in range(self.n):
             new = self.layer_sizes[x]
-            weights.append(np.random.rand(old, new))
+            weights.append(np.random.rand(old+1, new))
             old = new
-        weights.append(np.random.rand(old, self.output_size))
+        weights.append(np.random.rand(old+1, self.output_size))
         return weights
     
     def real_label(self, y):
@@ -234,32 +244,87 @@ class NeuralNetMLP:
         """
         return 1. / (1. + np.exp(-X))
     
-    def predict(self, input):
+    def d_sigmoid(self, X):
+        return np.multiply(X,1-X)
+    
+    def predict(self, inputs):
         """
-        Given an input vector, it returns the output without modifying current weights
+        Given an input numpy matrix, it returns the output without modifying current weights
         """
-        aux_vector = input
-        for w in self.weigths:
+        aux_vector = inputs
+        for w in self.weights:
+            aux_vector = np.insert(aux_vector, [aux_vector.size], [1])
             aux_vector = np.dot(aux_vector, w)
             aux_vector = self.sigmoid(aux_vector)
-            
-        return 
+        decision = np.argmax(aux_vector)
+        return decision
 
-    def fit(self, X_train, Y_train):
+    def cost(self, labels, prediction):
+        return np.sum((prediction-labels)**2)
+    
+    #TODO
+    def forward(self, inputs):
+        graph = Graph()
+        aux_vector = inputs
+        for w in self.weights:
+            #np.insert(temp,[temp.size], [1])
+            aux_vector = np.insert(aux_vector, [aux_vector.size], [1])
+            aux_vector = np.dot(aux_vector, w)
+            graph.Z.append(aux_vector) #add
+            aux_vector = self.sigmoid(aux_vector)
+            graph.A.append(aux_vector) #add
+        return graph
+    
+    #TODO
+    def back(self, graph, minibatch):
+        cost = self.cost(minibatch.labels, graph.A[-1])
+        n = self.h
+        gradient = []
+        #first back
+        a_l = graph.A.T[-1]
+        a_pre = graph.A.T[-2]
+        delta_CA = (minibatch.labels-a_l)*2
+        
+        z_l = graph.Z.T[-1]
+        delta_AZ = d_sigmoid(z_l)
+        
+        delta_ZA = a_pre.T
+        
+        gradient.append(np.delta_ZA)
+        
+        
+    
+    #TODO
+    def fit(self, X_train, Y_train, X_validation, Y_validation):
         """
         Trains neural network with two panda dataframes.
         
         Arguments:
             X_train: a pandas dataframe which does not include the label
             Y_train: label for the training data
+            
+            X_train: pandas dataframe of unlabeled
+            Y_train: label for the training data
         """
-        pass
-    
-    def forward(self):
-        pass
-    
-    def minibatch(self):
-        pass
+        
+        for batch in self.epoch(X_train, Y_train):
+            for minibatch in batch:
+                for entry,label in minibatch
+                    self.forward(entry.parameters)
+                    self.back(graph, entry)
+                self.step()
+            self.Validation()
+
+    #TODO    
+    def epoch(self,X_train,Y_train):
+        #randomize
+        #Seperate
+        #return seperated
+        minibatch = Minibatch()
+        minibatch.parameters = X_train
+        minibatch.labels = Y_train
+        return [[minibatch]]
+        
     
 def Preprocess(data):
     d = {"Iris-setosa" : 0, "Iris-versicolor" : 1, "Iris-virginica" : 2}
@@ -267,8 +332,8 @@ def Preprocess(data):
         data.iat[i,4] = d[data.iat[i,4]]
 
 if __name__ == "__main__":
-    iris = shuffle(pd.read_csv("Proyectos/MLP/iris.data.txt", header=None))
-    #iris = shuffle(pd.read_csv("iris.data.txt", header=None))
+    #iris = shuffle(pd.read_csv("Proyectos/MLP/iris.data.txt", header=None))
+    iris = shuffle(pd.read_csv("iris.data.txt", header=None))
     Preprocess(iris)
     X_train = iris.iloc[:100,:4]
     X_test  = iris.iloc[100:,:4]

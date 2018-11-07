@@ -3,30 +3,27 @@ from sklearn.utils import shuffle
 import numpy as np
 import sys
 
-class NeuralNetMLP(object):
+class MLPerceptron(object):
     #TODO add all parameters
-    def __init__(self, LAYERS=10):
+    def __init__(self, LAYERS=3, INPUT_SIZE=5, OUTPUT_SIZE=5, LAYER_SIZE=10, SEED=42):
+        self.seed = SEED
         self.layers = LAYERS
+        self.input_size = INPUT_SIZE
+        self.output_size = OUTPUT_SIZE
+        self.layer_size = LAYER_SIZE
+        self.weights = self.Initial_weights()
+
+    def Initial_weights(self):
         
 
-    def _onehot(self, y, n_classes):
-        """Encode labels into one-hot representation
-        Parameters
-        ------------
-        y : array, shape = [n_samples]
-            Target values.
-        Returns
-        -----------
-        onehot : array, shape = (n_samples, n_labels)
-        """
+    def onehot(self, y, n_classes):
         self.onehot = np.zeros((n_classes, y.shape[0]))
         for idx, val in enumerate(y.astype(int)):
             self.onehot[val, idx] = 1.
         return self.onehot.T
 
-    def _sigmoid(self, z):
-        """Compute logistic function (sigmoid)"""
-        return 1. / (1. + np.exp(-np.clip(z, -250, 250)))
+    def sigmoid(self, z):
+        return 1. / (1. + np.exp(-z))
 
     def _forward(self, X):
         """Compute forward propagation step"""
@@ -37,7 +34,7 @@ class NeuralNetMLP(object):
         z_h = np.dot(X, self.w_h) + self.b_h
 
         # step 2: activation of hidden layer
-        a_h = self._sigmoid(z_h)
+        a_h = self.sigmoid(z_h)
 
         # step 3: net input of output layer
         # [n_samples, n_hidden] dot [n_hidden, n_classlabels]
@@ -46,11 +43,11 @@ class NeuralNetMLP(object):
         z_out = np.dot(a_h, self.w_out) + self.b_out
 
         # step 4: activation output layer
-        a_out = self._sigmoid(z_out)
+        a_out = self.sigmoid(z_out)
 
         return z_h, a_h, z_out, a_out
 
-    def _compute_cost(self, y_enc, output):
+    def cost(self, y_enc, output):
         """Compute cost function.
         Parameters
         ----------
@@ -138,7 +135,7 @@ class NeuralNetMLP(object):
         epoch_strlen = len(str(self.epochs))  # for progress formatting
         self.eval_ = {'cost': [], 'train_acc': [], 'valid_acc': []}
 
-        y_train_enc = self._onehot(y_train, n_output)
+        y_train_enc = self.onehot(y_train, n_output)
 
         # iterate over training epochs
         for i in range(self.epochs):
@@ -199,7 +196,7 @@ class NeuralNetMLP(object):
             # Evaluation after each epoch during training
             z_h, a_h, z_out, a_out = self._forward(X_train)
 
-            cost = self._compute_cost(y_enc=y_train_enc,
+            cost = self.cost(y_enc=y_train_enc,
                                       output=a_out)
 
             y_train_pred = self.predict(X_train)
@@ -221,6 +218,7 @@ class NeuralNetMLP(object):
             self.eval_['valid_acc'].append(valid_acc)
 
         return self 
+
     
 def Preprocess(data):
     d = {"Iris-setosa" : 0, "Iris-versicolor" : 1, "Iris-virginica" : 2}
@@ -235,5 +233,5 @@ if __name__ == "__main__":
     Y_train = iris.iloc[:100,4]
     Y_test  = iris.iloc[100:,4]
     
-    net = NeuralNetMLP()
-    net.fit(X_train,X_test,Y_train,Y_test)
+    net = MLPerceptron()
+    #net.fit(X_train,X_test,Y_train,Y_test)
