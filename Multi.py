@@ -52,9 +52,9 @@ class NeuralNetMLP:
         old = self.input_size
         for x in range(self.n):
             new = self.layer_sizes[x]
-            self.weights.append(np.matrix((np.random.rand(old+1, new)-0.5)/100))
+            self.weights.append(np.matrix((np.random.rand(old+1, new)-0.5)*2))
             old = new
-        self.weights.append(np.matrix((np.random.rand(old+1, self.output_size)-0.5)/100))
+        self.weights.append(np.matrix((np.random.rand(old+1, self.output_size)-0.5)*2))
     
     def Real_label(self, y):
         """
@@ -115,7 +115,6 @@ class NeuralNetMLP:
     def Cost(self, labels, prediction):
         return np.sum((prediction-labels)*(prediction-labels).T)
     
-    #TODO
     def Forward(self,entry):
         aux_vector = entry
         for w in self.weights:
@@ -123,16 +122,36 @@ class NeuralNetMLP:
             aux_vector = np.dot(aux_vector, w)
             self.Z.append(aux_vector)
             aux_vector = self.Sigmoid(aux_vector)
-            self.A.append(aux_vector)
+            self.A.append(np.insert(aux_vector, [aux_vector.size], [1]))
         return aux_vector
     
+    def Back(self, label):
+        error = (self.A[-1][:,:-1] - label)
+        delta_CA = 2*error
+        delta_AZ = self.Z[-1]
+        delta_ZW = self.A[-2]
+        delta_CA_old = delta_CA
+        delta_AZ_old = delta_AZ
+        self.gradients[-1] += delta_ZW.T*np.multiply(delta_CA, delta_AZ)
+        for x in range(self.n,0,-1):
+            #check math
+            delta_CA = self.weights[x]*np.multiply(delta_CA_old,delta_AZ_old).T
+            delta_CA = delta_CA.T[:,:-1]
+            delta_AZ = self.Z[x-1]
+            delta_ZW = self.A[x-2]
+            self.delta_CA, self.delta_AZ, self.delta_ZW = delta_CA, delta_AZ, delta_ZW
+            self.gradients[x-1] += delta_ZW.T*np.multiply(delta_CA, delta_AZ)
+            delta_CA_old = delta_CA
+            delta_AZ_old = delta_AZ
+    
     #TODO
-    def Back(self, guess, label):
-        error = (guess - label)
-        for x in range(self.n-1,-1,-1):
-            
-        self.Z = []
-        self.A = []
+    def Validation(self,X_validation, Y_validation):
+        pass
+    
+    def Step(self):
+        for w in range(self.n+1):
+            self.weights[w] += self.gradients[w]
+        self.Grad_zero()
     
     #TODO
     def Fit(self):
@@ -148,10 +167,10 @@ class NeuralNetMLP:
         """
         for batch in self.epoch(X_train, Y_train):
             for minibatch in batch:
-                for entry,label in minibatch
-                    self.forward(entry.parameters)
-                    self.back(graph, entry)
-                self.step()
+                for entry,label in minibatch:
+                    self.Forward(entry.parameters)
+                    self.Back(graph, entry)
+                self.Step()
             self.Validation()
 
     #TODO    
