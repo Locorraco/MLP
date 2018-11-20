@@ -112,7 +112,8 @@ class NeuralNetMLP:
         decision = np.argmax(aux_vector)
         return decision
 
-    def Cost(self, labels, prediction):
+    def Cost(self, entry, labels):
+        prediction = self.Predict(entry)
         return np.sum((prediction-labels)*(prediction-labels).T)
     
     def Forward(self,entry):
@@ -144,17 +145,20 @@ class NeuralNetMLP:
             delta_CA_old = delta_CA
             delta_AZ_old = delta_AZ
     
-    #TODO
     def Validation(self,X_validation, Y_validation):
-        pass
+        cost = 0
+        for batch in self.Epoch(X_train, Y_train):
+            for minibatch in batch:
+                for entry,label in minibatch:
+                    cost += self.Cost(entry, label)
+        return cost
     
     def Step(self):
         for w in range(self.n+1):
             self.weights[w] += self.gradients[w]
         self.Grad_zero()
     
-    #TODO
-    def Fit(self):
+    def Fit(self,X_train, Y_train, X_test, Y_test):
         """
         Trains neural network with two panda dataframes.
         
@@ -165,17 +169,36 @@ class NeuralNetMLP:
             X_train: pandas dataframe of unlabeled
             Y_train: label for the training data
         """
-        for batch in self.epoch(X_train, Y_train):
+        for batch in self.Epoch(X_train, Y_train):
             for minibatch in batch:
                 for entry,label in minibatch:
-                    self.Forward(entry.parameters)
+                    self.Forward(entry)
                     self.Back(graph, entry)
                 self.Step()
             self.Validation()
+   
+    def Epoch(self, X_train, Y_train):
+        Z_train = shuffle(pd.concat([X_train, Y_train], axis=1))
+        minibatch = []
 
-    #TODO    
-    def Epoch(self):
-        pass
+        for i in range(len(Z_train)):
+            mini = []
+            arry = []
+            
+            row = Z_train[i:i+1]
+            
+            for j in range(len(X_train.columns)):
+                temp = row[j].values[0]
+                arry.append(temp)
+            
+            last = row[len(X_train.columns)].values[0]
+            arr = np.array(arry)
+            mini.append(arr)
+            mini.append(last)
+            
+            minibatch.append(mini)
+            
+        return minibatch
     
 def Preprocess(data):
     d = {"Iris-setosa" : 0, "Iris-versicolor" : 1, "Iris-virginica" : 2}
@@ -192,4 +215,4 @@ if __name__ == "__main__":
     Y_test  = iris.iloc[100:,4]
     
     net = NeuralNetMLP()
-    #net.Fit(X_train,X_test,Y_train,Y_test)
+    net.Fit(X_train,X_test,Y_train,Y_test)
