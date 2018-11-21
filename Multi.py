@@ -182,7 +182,7 @@ class NeuralNetMLP:
         self.Grad_zero()
     
     def Fit(self,X_train, Y_train, X_test, Y_test):
-        epoch = 1000
+        epoch = 50
         """
         Trains neural network with two panda dataframes.
         
@@ -194,7 +194,7 @@ class NeuralNetMLP:
             Y_train: label for the training data
         """
         for i in range(epoch):
-            for minibatch in self.Epoch(X_train, Y_train, 100):
+            for minibatch in self.Epoch(X_train, Y_train, 8):
                 for entry,label in minibatch:
                     self.Forward(entry)
                     self.Back(label)
