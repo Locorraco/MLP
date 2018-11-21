@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import sys
@@ -24,7 +25,7 @@ class NeuralNetMLP:
         net.Predict(X_test, Y_test)
             
     """
-    def __init__(self, INPUT_SIZE=5, OUTPUT_SIZE=5, LAYER_SIZES=[2, 3, 4], SEED=42, LEARNING_RATE=0.001):
+    def __init__(self, INPUT_SIZE=5, OUTPUT_SIZE=5, LAYER_SIZES=[2, 3, 4], SEED=42, LEARNING_RATE=0.00001):
         self.seed = SEED
         self.n = len(LAYER_SIZES)
         self.learning_rate = LEARNING_RATE
@@ -172,7 +173,6 @@ class NeuralNetMLP:
                 cost += self.Cost(entry, label)
             cost/=len(minibatch)
         cost/=mini
-        print(cost)
         return cost
     
     def Step(self):
@@ -182,7 +182,6 @@ class NeuralNetMLP:
         self.Grad_zero()
     
     def Fit(self,X_train, Y_train, X_test, Y_test):
-        epoch = 1000
         """
         Trains neural network with two panda dataframes.
         
@@ -193,17 +192,27 @@ class NeuralNetMLP:
             X_train: pandas dataframe of unlabeled
             Y_train: label for the training data
         """
+        epoch = 30
+        red=[]
+        blue=[]
         for i in range(epoch):
-            for minibatch in self.Epoch(X_train, Y_train, 100):
+            for minibatch in self.Epoch(X_train, Y_train, 16):
                 for entry,label in minibatch:
                     self.Forward(entry)
                     self.Back(label)
                 self.Step()
-            print("TRAINING: ", end="")
+            y=self.Validation(X_train, Y_train)
+            print("TRAINING: ", y)
             self.Validation(X_train, Y_train)
-            print("TESTING: ", end="")
-            self.Validation(X_test, Y_test)
+            red.append(y)
+            
+            y=self.Validation(X_test, Y_test)
+            print("TESTING: ", y)
+            blue.append(y)
             print()
+        plt.plot(range(1,len(red)+1), red, 'ro-')
+        plt.plot(range(1,len(blue)+1), blue, 'bo-')
+        plt.show()
    
     def Epoch(self, X_train, Y_train, batch_size):
         Z_train = shuffle(pd.concat([X_train, Y_train], axis=1))
@@ -283,6 +292,6 @@ if __name__ == "__main__":
     Y_test = pd.DataFrame(y_std[400:])
     Y_test.columns= [13]
     
-    net = NeuralNetMLP(INPUT_SIZE=13, OUTPUT_SIZE=1, LAYER_SIZES = [10,10])
+    net = NeuralNetMLP(INPUT_SIZE=13, OUTPUT_SIZE=1, LAYER_SIZES = [3,3,4,4])
     net.Fit(X_train,Y_train,X_test,Y_test)
  

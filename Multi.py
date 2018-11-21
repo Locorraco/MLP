@@ -1,6 +1,8 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import sys
+
 from sklearn.utils import shuffle
         
 class NeuralNetMLP:
@@ -172,7 +174,6 @@ class NeuralNetMLP:
                 cost += self.Cost(entry, label)
             cost/=len(minibatch)
         cost/=mini
-        print(cost)
         return cost
     
     def Step(self):
@@ -182,7 +183,6 @@ class NeuralNetMLP:
         self.Grad_zero()
     
     def Fit(self,X_train, Y_train, X_test, Y_test):
-        epoch = 50
         """
         Trains neural network with two panda dataframes.
         
@@ -193,17 +193,27 @@ class NeuralNetMLP:
             X_train: pandas dataframe of unlabeled
             Y_train: label for the training data
         """
+        epoch = 50
+        red=[]
+        blue=[]
         for i in range(epoch):
-            for minibatch in self.Epoch(X_train, Y_train, 8):
+            for minibatch in self.Epoch(X_train, Y_train, 16):
                 for entry,label in minibatch:
                     self.Forward(entry)
                     self.Back(label)
                 self.Step()
-            print("TRAINING: ", end="")
+            y=self.Validation(X_train, Y_train)
+            print("TRAINING: ", y)
             self.Validation(X_train, Y_train)
-            print("TESTING: ", end="")
-            self.Validation(X_test, Y_test)
+            red.append(y)
+            
+            y=self.Validation(X_test, Y_test)
+            print("TESTING: ", y)
+            blue.append(y)
             print()
+        plt.plot(1,range(len(red)+1), red, 'ro-')
+        plt.plot(1,range(len(blue)+1), blue, 'bo-')
+        plt.show()
    
     def Epoch(self, X_train, Y_train, batch_size):
         Z_train = shuffle(pd.concat([X_train, Y_train], axis=1))
