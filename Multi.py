@@ -166,9 +166,12 @@ class NeuralNetMLP:
     
     def Validation(self,X_validation, Y_validation):
         cost = 0
-        for minibatch in self.Epoch(X_validation, Y_validation, 1):
+        mini = 8
+        for minibatch in self.Epoch(X_validation, Y_validation, mini):
             for entry,label in minibatch:
                 cost += self.Cost(entry, label)
+            cost/=len(minibatch)
+        cost/=mini
         print(cost)
         return cost
     
@@ -179,6 +182,7 @@ class NeuralNetMLP:
         self.Grad_zero()
     
     def Fit(self,X_train, Y_train, X_test, Y_test):
+        epoch = 1000
         """
         Trains neural network with two panda dataframes.
         
@@ -189,11 +193,12 @@ class NeuralNetMLP:
             X_train: pandas dataframe of unlabeled
             Y_train: label for the training data
         """
-        for minibatch in self.Epoch(X_train, Y_train, 100):
-            for entry,label in minibatch:
-                self.Forward(entry)
-                self.Back(label)
-            self.Step()
+        for i in range(epoch):
+            for minibatch in self.Epoch(X_train, Y_train, 100):
+                for entry,label in minibatch:
+                    self.Forward(entry)
+                    self.Back(label)
+                self.Step()
             print("TRAINING: ", end="")
             self.Validation(X_train, Y_train)
             print("TESTING: ", end="")
@@ -240,5 +245,5 @@ if __name__ == "__main__":
     Y_train = iris.iloc[:100,4]
     Y_test  = iris.iloc[100:,4]
     
-    net = NeuralNetMLP(INPUT_SIZE=4, OUTPUT_SIZE=3, LAYER_SIZES = [4,4,4])
+    net = NeuralNetMLP(INPUT_SIZE=4, OUTPUT_SIZE=3, LAYER_SIZES = [10,10])
     net.Fit(X_train,Y_train,X_test,Y_test)
