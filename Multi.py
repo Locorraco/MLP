@@ -94,7 +94,7 @@ class NeuralNetMLP:
         Returns:
         out: vector of same dimension after element wise sigmoid function
         """
-        return 1. / (1. + np.exp(-X))
+        return 1. / (1. + np.exp(np.clip(-X,-250, 250)))
     
     def D_sigmoid(self, X):
         return np.multiply(X,1-X)
@@ -105,19 +105,25 @@ class NeuralNetMLP:
         """
         aux_vector = entry
         for w in self.weights:
-            aux_vector = np.insert(aux_vector, [aux_vector.size], [1])
+            aux_vector = np.insert(aux_vector, [aux_vector.size], [1.])
             aux_vector = np.dot(aux_vector, w)
             aux_vector = self.Sigmoid(aux_vector)
-        print(aux_vector) #Get Rid Of
-        decision = np.argmax(aux_vector)
-        return decision
+        #decision = np.argmax(aux_vector)
+        return aux_vector
 
     def Cost(self, entry, labels):
         prediction = self.Predict(entry)
-        return np.sum((prediction-labels)*(prediction-labels).T)
+        rl = self.Real_label(labels)
+        #print(rl, end=" ")
+        #print(prediction, end=" ")
+        #print("hi")
+        cost = np.sum((prediction-rl).T*(prediction-rl))
+        return cost
     
     def Forward(self,entry):
         aux_vector = entry
+        self.entry = entry
+        self.A.append(np.insert(aux_vector, [aux_vector.size], [1]))
         for w in self.weights:
             aux_vector = np.insert(aux_vector, [aux_vector.size], [1])
             aux_vector = np.dot(aux_vector, w)
@@ -129,33 +135,47 @@ class NeuralNetMLP:
     def Back(self, label):
         error = (self.A[-1][:,:-1] - label)
         delta_CA = 2*error
-        delta_AZ = self.Z[-1]
+        delta_AZ = self.D_sigmoid(self.Z[-1])
         delta_ZW = self.A[-2]
+        np.clip(delta_ZW, -100, 100)
+        np.clip(delta_AZ, -100, 100)
+        np.clip(delta_CA, -100, 100)
         delta_CA_old = delta_CA
         delta_AZ_old = delta_AZ
-        self.gradients[-1] += delta_ZW.T*np.multiply(delta_CA, delta_AZ)
-        for x in range(self.n,0,-1):
+        self.gradients[-1] += self.learning_rate*delta_ZW.T*np.multiply(delta_CA, delta_AZ)
+        for temp_x in range(self.n-1):
+            x = self.n-temp_x
             #check math
-            delta_CA = self.weights[x]*np.multiply(delta_CA_old,delta_AZ_old).T
-            delta_CA = delta_CA.T[:,:-1]
-            delta_AZ = self.Z[x-1]
-            delta_ZW = self.A[x-2]
-            self.delta_CA, self.delta_AZ, self.delta_ZW = delta_CA, delta_AZ, delta_ZW
-            self.gradients[x-1] += delta_ZW.T*np.multiply(delta_CA, delta_AZ)
+            delta_CA = np.multiply(delta_CA_old,delta_AZ_old)*self.weights[x][:-1].T
+            delta_AZ = self.D_sigmoid(self.Z[x-1])
+            delta_ZW = self.A[x-1]
+            np.clip(delta_ZW, -100, 100)
+            np.clip(delta_AZ, -100, 100)
+            np.clip(delta_CA, -100, 100)
+            self.gradients[x-1] += self.learning_rate*(delta_ZW.T*np.multiply(delta_CA, delta_AZ))
             delta_CA_old = delta_CA
             delta_AZ_old = delta_AZ
+        
+        delta_CA = np.multiply(delta_CA_old,delta_AZ_old)*self.weights[1][:-1].T
+        delta_AZ = self.D_sigmoid(self.Z[0])
+        delta_ZW = self.A[0].reshape(self.input_size+1,1)
+        np.clip(delta_ZW, -100, 100)
+        np.clip(delta_AZ, -100, 100)
+        np.clip(delta_CA, -100, 100)
+        self.gradients[0] += self.learning_rate*np.clip(delta_ZW*np.multiply(delta_CA, delta_AZ),-100,100)
     
     def Validation(self,X_validation, Y_validation):
         cost = 0
-        for batch in self.Epoch(X_train, Y_train):
-            for minibatch in batch:
-                for entry,label in minibatch:
-                    cost += self.Cost(entry, label)
+        for minibatch in self.Epoch(X_validation, Y_validation, 1):
+            for entry,label in minibatch:
+                cost += self.Cost(entry, label)
+        print(cost)
         return cost
     
     def Step(self):
         for w in range(self.n+1):
             self.weights[w] += self.gradients[w]
+            np.clip(self.weights[w], -10, 10)
         self.Grad_zero()
     
     def Fit(self,X_train, Y_train, X_test, Y_test):
@@ -164,41 +184,47 @@ class NeuralNetMLP:
         
         Arguments:
             X_train: a pandas dataframe which does not include the label
-            Y_train: label for the training data
+          np.clip(  Y_train: label for the training data
             
             X_train: pandas dataframe of unlabeled
             Y_train: label for the training data
         """
-        for batch in self.Epoch(X_train, Y_train):
-            for minibatch in batch:
-                for entry,label in minibatch:
-                    self.Forward(entry)
-                    self.Back(graph, entry)
-                self.Step()
-            self.Validation()
+        for minibatch in self.Epoch(X_train, Y_train, 100):
+            for entry,label in minibatch:
+                self.Forward(entry)
+                self.Back(label)
+            self.Step()
+            print("TRAINING: ", end="")
+            self.Validation(X_train, Y_train)
+            print("TESTING: ", end="")
+            self.Validation(X_test, Y_test)
+            print()
    
-    def Epoch(self, X_train, Y_train):
+    def Epoch(self, X_train, Y_train, batch_size):
         Z_train = shuffle(pd.concat([X_train, Y_train], axis=1))
-        minibatch = []
+        batch = []
+        for x in range(len(Z_train)):
+            minibatch = []
 
-        for i in range(len(Z_train)):
-            mini = []
-            arry = []
+            for i in range(batch_size):
+                entry = []
+                arry = []
+                
+                row = Z_train[i:i+1]
+                
+                for j in range(len(X_train.columns)):
+                    temp = row[j].values[0]
+                    arry.append(temp)
+                
+                last = row[len(X_train.columns)].values[0]
+                arr = np.array(arry)
+                entry.append(arr)
+                entry.append(last)
+                
+                minibatch.append(entry)
             
-            row = Z_train[i:i+1]
-            
-            for j in range(len(X_train.columns)):
-                temp = row[j].values[0]
-                arry.append(temp)
-            
-            last = row[len(X_train.columns)].values[0]
-            arr = np.array(arry)
-            mini.append(arr)
-            mini.append(last)
-            
-            minibatch.append(mini)
-            
-        return minibatch
+            batch.append(minibatch)
+        return batch
     
 def Preprocess(data):
     d = {"Iris-setosa" : 0, "Iris-versicolor" : 1, "Iris-virginica" : 2}
@@ -214,5 +240,5 @@ if __name__ == "__main__":
     Y_train = iris.iloc[:100,4]
     Y_test  = iris.iloc[100:,4]
     
-    net = NeuralNetMLP()
-    net.Fit(X_train,X_test,Y_train,Y_test)
+    net = NeuralNetMLP(INPUT_SIZE=4, OUTPUT_SIZE=3, LAYER_SIZES = [4,4,4])
+    net.Fit(X_train,Y_train,X_test,Y_test)
